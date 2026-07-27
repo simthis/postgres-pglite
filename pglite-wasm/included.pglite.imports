@@ -99,3 +99,4 @@ text_to_cstring_buffer
 time
 tolower
 TupleDescGetAttInMetadata
+QueryCancelPending
