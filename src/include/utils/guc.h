@@ -376,6 +376,7 @@ extern int	NewGUCNestLevel(void);
 extern void RestrictSearchPath(void);
 extern void AtEOXact_GUC(bool isCommit, int nestLevel);
 extern void BeginReportingGUCOptions(void);
+extern void BeginReportingChangedGUCOptions(void);
 extern void ReportChangedGUCOptions(void);
 extern void ParseLongOption(const char *string, char **name, char **value);
 extern const char *get_config_unit_name(int flags);

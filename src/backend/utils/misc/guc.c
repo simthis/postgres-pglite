@@ -2582,6 +2582,48 @@ BeginReportingGUCOptions(void)
 }
 
 /*
+ * Start up automatic reporting of changes to variables marked GUC_REPORT,
+ * without transmitting their initial values.
+ *
+ * An embedded backend has no startup-packet phase, so it never reaches
+ * BeginReportingGUCOptions with an interactive destination and its client
+ * establishes the initial values out of band.  Reports queued while reporting
+ * was disabled describe that initial state rather than an intra-session
+ * change, so they are dropped instead of being emitted into the response to
+ * the first query.
+ */
+void
+BeginReportingChangedGUCOptions(void)
+{
+	slist_mutable_iter iter;
+
+	/*
+	 * Don't do anything unless talking to an interactive frontend.
+	 */
+	if (whereToSendOutput != DestRemote)
+		return;
+
+	/*
+	 * Leave a session that already reported its initial values alone; its
+	 * queued reports are real changes.
+	 */
+	if (reporting_enabled)
+		return;
+
+	reporting_enabled = true;
+
+	/* Discard the reports queued before reporting was enabled */
+	slist_foreach_modify(iter, &guc_report_list)
+	{
+		struct config_generic *conf = slist_container(struct config_generic,
+													  report_link, iter.cur);
+
+		conf->status &= ~GUC_NEEDS_REPORT;
+		slist_delete_current(&iter);
+	}
+}
+
+/*
  * ReportChangedGUCOptions: report recently-changed GUC_REPORT variables
  *
  * This is called just before we wait for a new client query.

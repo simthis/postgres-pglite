@@ -290,6 +290,14 @@ interactive_one(int packetlen, int peek) {
 
     whereToSendOutput = DestRemote;
 
+    /*
+     * An embedded session reaches an interactive destination only here:
+     * startup ran BeginReportingGUCOptions while output still went to
+     * DestDebug, so reporting is still disabled.  Enable it now so that
+     * GUC_REPORT changes reach the client in band.
+     */
+    BeginReportingChangedGUCOptions();
+
 #if PGDEBUG
     if (packetlen)
         IO[packetlen]=0; // wire blocks are not zero terminated
@@ -371,6 +379,8 @@ incoming:
             pipelining = pq_buffer_remaining_data()>0;
             if (pipelining && send_ready_for_query) {
 puts("# 631:  PIPELINING + rfq");
+                /* Report any recently-changed GUC options */
+                ReportChangedGUCOptions();
                 ReadyForQuery(whereToSendOutput);
                 send_ready_for_query = false;
             }
@@ -384,6 +394,8 @@ wire_flush:
            ProcessNotifyInterrupt(false);
         if (send_ready_for_query) {
             PDEBUG("# 602: end packet - sending rfq\n");
+            /* Report any recently-changed GUC options */
+            ReportChangedGUCOptions();
             ReadyForQuery(DestRemote);
             //done at postgres.c 4623
             send_ready_for_query = false;
